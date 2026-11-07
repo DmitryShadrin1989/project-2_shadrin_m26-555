@@ -1,0 +1,15 @@
+.venv
+dist/
+__pycache__/
+*.egg-info
+
+# Tool caches
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
