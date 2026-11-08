@@ -1,6 +1,6 @@
 DB_META_FILE = "db_meta.json"
 DATA_DIR = "data"
 
-VALID_TYPES = {"int", "str", "bool"}
+VALID_TYPES = {"int": int, "str": str, "bool": bool}
 ID_COLUMN = "ID"
 ID_TYPE = "int"
