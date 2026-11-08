@@ -1,10 +1,5 @@
 from primitive_db.constants import ID_COLUMN, ID_TYPE, VALID_TYPES
-from primitive_db.decorators import (
-    DatabaseError,
-    confirm_action,
-    handle_db_errors,
-    log_time,
-)
+from primitive_db.decorators import confirm_action, handle_db_errors, log_time
 
 
 def _ensure_table_exists(metadata, table_name):
@@ -41,10 +36,10 @@ def create_table(metadata, table_name, columns):
         (сообщение выводит декоратор handle_db_errors).
     """
     if table_name in metadata:
-        raise DatabaseError(f'Таблица "{table_name}" уже существует')
+        raise RuntimeError(f'Таблица "{table_name}" уже существует')
 
     if not columns:
-        raise DatabaseError("Не указаны столбцы таблицы")
+        raise RuntimeError("Не указаны столбцы таблицы")
 
     table_columns = {ID_COLUMN: ID_TYPE}
     for column in columns:
@@ -139,7 +134,7 @@ def validate_clause(metadata, table_name, clause, allow_id=True):
         return True
 
     if not allow_id and ID_COLUMN in clause:
-        raise DatabaseError(f"Столбец {ID_COLUMN} нельзя изменить")
+        raise RuntimeError(f"Столбец {ID_COLUMN} нельзя изменить")
 
     _validate_record(metadata[table_name], clause)
     return True
@@ -166,7 +161,7 @@ def insert(metadata, table_name, values, table_data):
     data_columns = [column for column in columns if column != ID_COLUMN]
 
     if len(values) != len(data_columns):
-        raise DatabaseError(
+        raise RuntimeError(
             f"Ожидалось значений: {len(data_columns)}, получено: {len(values)}"
         )
 

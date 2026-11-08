@@ -2,14 +2,13 @@ import functools
 import time
 
 
-class DatabaseError(Exception):
-    """Нарушение правил базы данных, например таблица уже существует."""
-
-
 def handle_db_errors(func):
     """Перехватывает ошибки базы данных и выводит понятное сообщение.
 
-    Если функция завершилась с ошибкой, обёртка возвращает None.
+    KeyError - не найдена таблица или столбец, ValueError - некорректное
+    значение, RuntimeError - нарушено правило базы данных (например,
+    таблица уже существует). Если функция завершилась с ошибкой,
+    обёртка возвращает None.
     """
 
     @functools.wraps(func)
@@ -25,7 +24,7 @@ def handle_db_errors(func):
             print(f"Ошибка: {error.args[0]}.")
         except ValueError as error:
             print(f"Некорректное значение: {error}. Попробуйте снова.")
-        except DatabaseError as error:
+        except RuntimeError as error:
             print(f"Ошибка: {error}.")
         except Exception as error:
             print(f"Произошла непредвиденная ошибка: {error}")
