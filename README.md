@@ -159,3 +159,7 @@ uv run database
 ### Управление таблицами
 
 [![asciicast](https://asciinema.org/a/bCMIPzOAUr35eDpv.svg)](https://asciinema.org/a/bCMIPzOAUr35eDpv)
+
+### CRUD-операции
+
+[![asciicast](https://asciinema.org/a/GmsLr92zv5ZMHKYQ.svg)](https://asciinema.org/a/GmsLr92zv5ZMHKYQ)
