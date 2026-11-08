@@ -1,7 +1,7 @@
 import json
-from pathlib import Path
+import os
 
-from primitive_db.constants import DATA_DIR
+from primitive_db.constants import DATA_DIR, JSON_INDENT
 
 
 def _load_json(filepath, default):
@@ -16,12 +16,12 @@ def _load_json(filepath, default):
 def _save_json(filepath, data):
     """Записывает данные в JSON-файл, полностью перезаписывая его."""
     with open(filepath, "w", encoding="utf-8") as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
+        json.dump(data, file, ensure_ascii=False, indent=JSON_INDENT)
 
 
 def _table_path(table_name):
     """Возвращает путь к файлу данных таблицы, например data/users.json."""
-    return Path(DATA_DIR) / f"{table_name}.json"
+    return os.path.join(DATA_DIR, f"{table_name}.json")
 
 
 def load_metadata(filepath):
@@ -67,7 +67,7 @@ def save_table_data(table_name, data):
         table_name: имя таблицы.
         data: список записей-словарей.
     """
-    Path(DATA_DIR).mkdir(exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
     _save_json(_table_path(table_name), data)
 
 
@@ -77,25 +77,7 @@ def delete_table_data(table_name):
     Args:
         table_name: имя таблицы.
     """
-    _table_path(table_name).unlink(missing_ok=True)
-
-
-def create_cacher():
-    """Создаёт функцию кэширования со своим словарём кэша в замыкании.
-
-    Returns:
-        Функция cache_result(key, value_func). Если результат для key уже
-        есть в кэше, она возвращает его. Иначе вызывает value_func(),
-        сохраняет результат в кэш и возвращает его.
-    """
-    cache = {}
-
-    def cache_result(key, value_func):
-        if key in cache:
-            return cache[key]
-
-        result = value_func()
-        cache[key] = result
-        return result
-
-    return cache_result
+    try:
+        os.remove(_table_path(table_name))
+    except FileNotFoundError:
+        pass

@@ -12,11 +12,24 @@
 uv sync
 ```
 
+или через `make`:
+
+```bash
+make install
+```
+
 Установка как консольной команды:
 
 ```bash
 uv build
 uv tool install dist/primitive_db-0.5.0-py3-none-any.whl
+```
+
+или через `make`:
+
+```bash
+make build
+make package-install
 ```
 
 ## Запуск
@@ -32,6 +45,32 @@ database
 ```bash
 uv run database
 ```
+
+или через `make`:
+
+```bash
+make run
+```
+
+## Проверка кода
+
+```bash
+make lint
+```
+
+Команда запускает линтер `ruff` (`uv run ruff check .`).
+
+## Структура проекта
+
+| Модуль | Назначение |
+|---|---|
+| `src/primitive_db/main.py` | точка входа в приложение |
+| `src/primitive_db/engine.py` | основной цикл, обработка ввода, вызов команд |
+| `src/primitive_db/core.py` | бизнес-логика: таблицы и CRUD-операции |
+| `src/primitive_db/parser.py` | разбор команд: `values`, `where`, `set` |
+| `src/primitive_db/utils.py` | загрузка и сохранение метаданных и данных таблиц |
+| `src/primitive_db/decorators.py` | декораторы и замыкание для кэширования |
+| `src/primitive_db/constants.py` | константы |
 
 ## Хранение данных
 
@@ -162,8 +201,8 @@ uv run database
 
 ## Дополнительные возможности
 
-Повторяющаяся логика вынесена в декораторы (`src/primitive_db/decorators.py`)
-и замыкание (`create_cacher` в `src/primitive_db/utils.py`).
+Повторяющаяся логика вынесена в декораторы и замыкание `create_cacher`
+(`src/primitive_db/decorators.py`).
 
 ### Обработка ошибок
 
@@ -227,4 +266,3 @@ uv run database
 ### Декораторы и кэширование
 
 [![asciicast](https://asciinema.org/a/Mu95CAoEzLdBLYdD.svg)](https://asciinema.org/a/Mu95CAoEzLdBLYdD)
-
