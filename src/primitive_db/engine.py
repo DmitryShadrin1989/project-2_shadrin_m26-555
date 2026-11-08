@@ -15,6 +15,7 @@ from primitive_db.core import (
     update,
     validate_clause,
 )
+from primitive_db.decorators import handle_db_errors
 from primitive_db.parser import parse_delete, parse_insert, parse_select, parse_update
 from primitive_db.utils import (
     delete_table_data,
@@ -90,6 +91,7 @@ def _matching_ids(table_data, where_clause):
     return [record[ID_COLUMN] for record in select(table_data, where_clause)]
 
 
+@handle_db_errors
 def _handle_insert(metadata, user_input):
     """Выполняет команду insert into ... values (...)."""
     table_name, values = parse_insert(user_input)
@@ -98,6 +100,7 @@ def _handle_insert(metadata, user_input):
         save_table_data(table_name, table_data)
 
 
+@handle_db_errors
 def _handle_select(metadata, user_input):
     """Выполняет команду select from ... [where ...]."""
     table_name, where_clause = parse_select(user_input)
@@ -108,6 +111,7 @@ def _handle_select(metadata, user_input):
     _print_records(metadata[table_name], records)
 
 
+@handle_db_errors
 def _handle_update(metadata, user_input):
     """Выполняет команду update ... set ... where ..."""
     table_name, set_clause, where_clause = parse_update(user_input)
@@ -129,6 +133,7 @@ def _handle_update(metadata, user_input):
         print(f'Запись с ID={record_id} в таблице "{table_name}" успешно обновлена.')
 
 
+@handle_db_errors
 def _handle_delete(metadata, user_input):
     """Выполняет команду delete from ... where ..."""
     table_name, where_clause = parse_delete(user_input)
@@ -170,36 +175,33 @@ def run():
             print(f"Некорректное значение: {user_input}. Попробуйте снова.")
             continue
 
-        try:
-            match args:
-                case []:
-                    continue
-                case ["create_table", table_name, *columns]:
-                    metadata = create_table(metadata, table_name, columns)
+        match args:
+            case []:
+                continue
+            case ["create_table", table_name, *columns]:
+                if create_table(metadata, table_name, columns) is not None:
                     save_metadata(DB_META_FILE, metadata)
-                case ["drop_table", table_name]:
-                    metadata = drop_table(metadata, table_name)
+            case ["drop_table", table_name]:
+                if drop_table(metadata, table_name) is not None:
                     save_metadata(DB_META_FILE, metadata)
                     delete_table_data(table_name)
-                case ["list_tables"]:
-                    list_tables(metadata)
-                case ["insert", *_]:
-                    _handle_insert(metadata, user_input)
-                case ["select", *_]:
-                    _handle_select(metadata, user_input)
-                case ["update", *_]:
-                    _handle_update(metadata, user_input)
-                case ["delete", *_]:
-                    _handle_delete(metadata, user_input)
-                case ["info", table_name]:
-                    info(metadata, table_name, load_table_data(table_name))
-                case ["help"]:
-                    print_help()
-                case ["exit"]:
-                    break
-                case [command, *_] if command in COMMANDS:
-                    print(f"Некорректное значение: {user_input}. Попробуйте снова.")
-                case [command, *_]:
-                    print(f"Функции {command} нет. Попробуйте снова.")
-        except ValueError as error:
-            print(f"Некорректное значение: {error}. Попробуйте снова.")
+            case ["list_tables"]:
+                list_tables(metadata)
+            case ["insert", *_]:
+                _handle_insert(metadata, user_input)
+            case ["select", *_]:
+                _handle_select(metadata, user_input)
+            case ["update", *_]:
+                _handle_update(metadata, user_input)
+            case ["delete", *_]:
+                _handle_delete(metadata, user_input)
+            case ["info", table_name]:
+                info(metadata, table_name, load_table_data(table_name))
+            case ["help"]:
+                print_help()
+            case ["exit"]:
+                break
+            case [command, *_] if command in COMMANDS:
+                print(f"Некорректное значение: {user_input}. Попробуйте снова.")
+            case [command, *_]:
+                print(f"Функции {command} нет. Попробуйте снова.")

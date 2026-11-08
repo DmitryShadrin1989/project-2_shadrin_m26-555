@@ -1,12 +1,15 @@
 from primitive_db.constants import ID_COLUMN, ID_TYPE, VALID_TYPES
+from primitive_db.decorators import DatabaseError, handle_db_errors
 
 
-def _table_exists(metadata, table_name):
-    """Проверяет, что таблица существует. Если нет, выводит ошибку."""
+def _ensure_table_exists(metadata, table_name):
+    """Проверяет, что таблица существует.
+
+    Raises:
+        KeyError: если таблицы нет.
+    """
     if table_name not in metadata:
-        print(f'Ошибка: Таблица "{table_name}" не существует.')
-        return False
-    return True
+        raise KeyError(f'Таблица "{table_name}" не существует')
 
 
 def _format_columns(columns):
@@ -14,6 +17,7 @@ def _format_columns(columns):
     return ", ".join(f"{name}:{type_}" for name, type_ in columns.items())
 
 
+@handle_db_errors
 def create_table(metadata, table_name, columns):
     """Создаёт таблицу и добавляет её описание в метаданные.
 
@@ -28,16 +32,14 @@ def create_table(metadata, table_name, columns):
             Допустимые типы: int, str, bool.
 
     Returns:
-        Обновлённый словарь метаданных. При ошибке выводит сообщение
-        и возвращает метаданные без изменений.
+        Обновлённый словарь метаданных или None, если произошла ошибка
+        (сообщение выводит декоратор handle_db_errors).
     """
     if table_name in metadata:
-        print(f'Ошибка: Таблица "{table_name}" уже существует.')
-        return metadata
+        raise DatabaseError(f'Таблица "{table_name}" уже существует')
 
     if not columns:
-        print("Ошибка: Не указаны столбцы таблицы.")
-        return metadata
+        raise DatabaseError("Не указаны столбцы таблицы")
 
     table_columns = {ID_COLUMN: ID_TYPE}
     for column in columns:
@@ -47,8 +49,7 @@ def create_table(metadata, table_name, columns):
             continue  # ID is already added
 
         if not name or column_type not in VALID_TYPES or name in table_columns:
-            print(f"Некорректное значение: {column}. Попробуйте снова.")
-            return metadata
+            raise ValueError(column)
 
         table_columns[name] = column_type
 
@@ -59,6 +60,7 @@ def create_table(metadata, table_name, columns):
     return metadata
 
 
+@handle_db_errors
 def drop_table(metadata, table_name):
     """Удаляет таблицу из метаданных.
 
@@ -67,11 +69,9 @@ def drop_table(metadata, table_name):
         table_name: имя удаляемой таблицы.
 
     Returns:
-        Обновлённый словарь метаданных. Если таблицы нет, выводит ошибку
-        и возвращает метаданные без изменений.
+        Обновлённый словарь метаданных или None, если таблицы нет.
     """
-    if not _table_exists(metadata, table_name):
-        return metadata
+    _ensure_table_exists(metadata, table_name)
 
     del metadata[table_name]
     print(f'Таблица "{table_name}" успешно удалена.')
@@ -92,29 +92,27 @@ def list_tables(metadata):
         print(f"- {table_name}")
 
 
-def _is_valid_record(columns, record):
+def _validate_record(columns, record):
     """Проверяет, что все столбцы записи есть в схеме и типы значений совпадают.
 
     Args:
         columns: схема таблицы вида {"столбец": "тип"}.
         record: словарь вида {"столбец": значение}.
 
-    Returns:
-        True, если всё верно. Иначе выводит ошибку и возвращает False.
+    Raises:
+        KeyError: если столбца нет в схеме.
+        ValueError: если тип значения не совпадает с типом столбца.
     """
     for column, value in record.items():
         if column not in columns:
-            print(f'Ошибка: Столбец "{column}" не существует.')
-            return False
+            raise KeyError(f'Столбец "{column}" не существует')
 
         # type(), а не isinstance(): isinstance(True, int) тоже даёт True
         if type(value) is not VALID_TYPES[columns[column]]:
-            print(f"Некорректное значение: {value!r}. Попробуйте снова.")
-            return False
-
-    return True
+            raise ValueError(repr(value))
 
 
+@handle_db_errors
 def validate_clause(metadata, table_name, clause, allow_id=True):
     """Проверяет условие where или set по схеме таблицы.
 
@@ -126,21 +124,21 @@ def validate_clause(metadata, table_name, clause, allow_id=True):
 
     Returns:
         True, если таблица существует и условие подходит к её схеме.
-        Иначе выводит ошибку и возвращает False.
+        None, если есть ошибка (сообщение выводит handle_db_errors).
     """
-    if not _table_exists(metadata, table_name):
-        return False
+    _ensure_table_exists(metadata, table_name)
 
     if clause is None:
         return True
 
     if not allow_id and ID_COLUMN in clause:
-        print(f"Ошибка: Столбец {ID_COLUMN} нельзя изменить.")
-        return False
+        raise DatabaseError(f"Столбец {ID_COLUMN} нельзя изменить")
 
-    return _is_valid_record(metadata[table_name], clause)
+    _validate_record(metadata[table_name], clause)
+    return True
 
 
+@handle_db_errors
 def insert(metadata, table_name, values, table_data):
     """Добавляет новую запись в таблицу. ID генерируется автоматически.
 
@@ -152,23 +150,20 @@ def insert(metadata, table_name, values, table_data):
 
     Returns:
         Обновлённый список записей или None, если данные некорректны
-        (сообщение об ошибке при этом уже выведено).
+        (сообщение выводит декоратор handle_db_errors).
     """
-    if not _table_exists(metadata, table_name):
-        return None
+    _ensure_table_exists(metadata, table_name)
 
     columns = metadata[table_name]
     data_columns = [column for column in columns if column != ID_COLUMN]
 
     if len(values) != len(data_columns):
-        print(
-            f"Ошибка: Ожидалось значений: {len(data_columns)}, получено: {len(values)}."
+        raise DatabaseError(
+            f"Ожидалось значений: {len(data_columns)}, получено: {len(values)}"
         )
-        return None
 
     record = dict(zip(data_columns, values))
-    if not _is_valid_record(columns, record):
-        return None
+    _validate_record(columns, record)
 
     new_id = max((row[ID_COLUMN] for row in table_data), default=0) + 1
     table_data.append({ID_COLUMN: new_id, **record})
@@ -226,6 +221,7 @@ def delete(table_data, where_clause):
     return [record for record in table_data if not _matches(record, where_clause)]
 
 
+@handle_db_errors
 def info(metadata, table_name, table_data):
     """Выводит описание таблицы: столбцы и количество записей.
 
@@ -234,8 +230,7 @@ def info(metadata, table_name, table_data):
         table_name: имя таблицы.
         table_data: записи таблицы (список словарей).
     """
-    if not _table_exists(metadata, table_name):
-        return
+    _ensure_table_exists(metadata, table_name)
 
     print(f"Таблица: {table_name}")
     print(f"Столбцы: {_format_columns(metadata[table_name])}")
