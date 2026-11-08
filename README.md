@@ -80,6 +80,7 @@ uv run database
 >>>Введите команду: select
 Функции select нет. Попробуйте снова.
 ```
+
 ## Демонстрация
 
 [![asciicast](https://asciinema.org/a/bCMIPzOAUr35eDpv.svg)](https://asciinema.org/a/bCMIPzOAUr35eDpv)
