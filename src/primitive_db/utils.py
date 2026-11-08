@@ -1,5 +1,5 @@
 import json
-from pathlib import Path
+import os
 
 from primitive_db.constants import DATA_DIR
 
@@ -21,7 +21,7 @@ def _save_json(filepath, data):
 
 def _table_path(table_name):
     """Возвращает путь к файлу данных таблицы, например data/users.json."""
-    return Path(DATA_DIR) / f"{table_name}.json"
+    return os.path.join(DATA_DIR, f"{table_name}.json")
 
 
 def load_metadata(filepath):
@@ -67,7 +67,7 @@ def save_table_data(table_name, data):
         table_name: имя таблицы.
         data: список записей-словарей.
     """
-    Path(DATA_DIR).mkdir(exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
     _save_json(_table_path(table_name), data)
 
 
@@ -77,4 +77,7 @@ def delete_table_data(table_name):
     Args:
         table_name: имя таблицы.
     """
-    _table_path(table_name).unlink(missing_ok=True)
+    try:
+        os.remove(_table_path(table_name))
+    except FileNotFoundError:
+        pass

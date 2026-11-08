@@ -1,5 +1,15 @@
-import functools
 import time
+
+
+def _copy_metadata(wrapper, func):
+    """Копирует имя и описание исходной функции на обёртку.
+
+    Делает то же, что functools.wraps: без этого у обёрнутой функции
+    было бы имя wrapper и не было бы докстринга.
+    """
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
 
 
 def handle_db_errors(func):
@@ -11,7 +21,6 @@ def handle_db_errors(func):
     обёртка возвращает None.
     """
 
-    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -30,7 +39,7 @@ def handle_db_errors(func):
             print(f"Произошла непредвиденная ошибка: {error}")
         return None
 
-    return wrapper
+    return _copy_metadata(wrapper, func)
 
 
 def confirm_action(action_name):
@@ -44,7 +53,6 @@ def confirm_action(action_name):
     """
 
     def decorator(func):
-        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             question = f'Вы уверены, что хотите выполнить "{action_name}"? [y/n]: '
             try:
@@ -58,7 +66,7 @@ def confirm_action(action_name):
                 return None
             return func(*args, **kwargs)
 
-        return wrapper
+        return _copy_metadata(wrapper, func)
 
     return decorator
 
@@ -66,7 +74,6 @@ def confirm_action(action_name):
 def log_time(func):
     """Замеряет время выполнения функции и выводит его в консоль."""
 
-    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start = time.monotonic()
         result = func(*args, **kwargs)
@@ -74,7 +81,7 @@ def log_time(func):
         print(f"Функция {func.__name__} выполнилась за {elapsed:.3f} секунд")
         return result
 
-    return wrapper
+    return _copy_metadata(wrapper, func)
 
 
 def create_cacher():
