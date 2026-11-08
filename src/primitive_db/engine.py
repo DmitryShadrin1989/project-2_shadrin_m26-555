@@ -18,6 +18,7 @@ from primitive_db.core import (
 from primitive_db.decorators import handle_db_errors
 from primitive_db.parser import parse_delete, parse_insert, parse_select, parse_update
 from primitive_db.utils import (
+    create_cacher,
     delete_table_data,
     load_metadata,
     load_table_data,
@@ -37,6 +38,7 @@ COMMANDS = {
     "help",
     "exit",
 }
+MODIFYING_COMMANDS = {"create_table", "drop_table", "insert", "update", "delete"}
 
 
 def print_help():
@@ -101,13 +103,20 @@ def _handle_insert(metadata, user_input):
 
 
 @handle_db_errors
-def _handle_select(metadata, user_input):
-    """Выполняет команду select from ... [where ...]."""
+def _handle_select(metadata, user_input, cache_result):
+    """Выполняет команду select from ... [where ...].
+
+    Результаты одинаковых запросов берутся из кэша: файл не читается
+    и функция select не вызывается повторно.
+    """
     table_name, where_clause = parse_select(user_input)
     if not validate_clause(metadata, table_name, where_clause):
         return
 
-    records = select(load_table_data(table_name), where_clause)
+    key = (table_name, str(where_clause))
+    records = cache_result(
+        key, lambda: select(load_table_data(table_name), where_clause)
+    )
     _print_records(metadata[table_name], records)
 
 
@@ -159,9 +168,11 @@ def run():
     """Запускает основной цикл программы: читает команды и выполняет их.
 
     На каждой итерации метаданные заново читаются из файла. Изменения
-    таблиц и данных сразу сохраняются в файлы.
+    таблиц и данных сразу сохраняются в файлы. Результаты select
+    кэшируются до первой команды, которая меняет таблицы или данные.
     """
     print_help()
+    cache_result = create_cacher()
 
     while True:
         metadata = load_metadata(DB_META_FILE)
@@ -197,7 +208,7 @@ def run():
             case ["insert", *_]:
                 _handle_insert(metadata, user_input)
             case ["select", *_]:
-                _handle_select(metadata, user_input)
+                _handle_select(metadata, user_input, cache_result)
             case ["update", *_]:
                 _handle_update(metadata, user_input)
             case ["delete", *_]:
@@ -212,3 +223,7 @@ def run():
                 print(f"Некорректное значение: {user_input}. Попробуйте снова.")
             case [command, *_]:
                 print(f"Функции {command} нет. Попробуйте снова.")
+
+        if args[0] in MODIFYING_COMMANDS:
+            # данные могли измениться: старый кэш больше не годится
+            cache_result = create_cacher()
