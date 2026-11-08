@@ -168,6 +168,8 @@ def insert(metadata, table_name, values, table_data):
     record = dict(zip(data_columns, values))
     _validate_record(columns, record)
 
+    # max + 1, а не len + 1: после удаления записей len дал бы повторный ID;
+    # для пустой таблицы max вернёт 0, и первая запись получит ID=1
     new_id = max((row[ID_COLUMN] for row in table_data), default=0) + 1
     table_data.append({ID_COLUMN: new_id, **record})
 

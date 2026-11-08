@@ -1,7 +1,7 @@
 import json
 import os
 
-from primitive_db.constants import DATA_DIR
+from primitive_db.constants import DATA_DIR, JSON_INDENT
 
 
 def _load_json(filepath, default):
@@ -16,7 +16,7 @@ def _load_json(filepath, default):
 def _save_json(filepath, data):
     """Записывает данные в JSON-файл, полностью перезаписывая его."""
     with open(filepath, "w", encoding="utf-8") as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
+        json.dump(data, file, ensure_ascii=False, indent=JSON_INDENT)
 
 
 def _table_path(table_name):

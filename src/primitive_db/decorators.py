@@ -1,5 +1,7 @@
 import time
 
+from primitive_db.constants import CONFIRM_ANSWER
+
 
 def _copy_metadata(wrapper, func):
     """Копирует имя и описание исходной функции на обёртку.
@@ -22,6 +24,7 @@ def handle_db_errors(func):
     """
 
     def wrapper(*args, **kwargs):
+        """Вызывает func и превращает её ошибки в сообщения."""
         try:
             return func(*args, **kwargs)
         except FileNotFoundError:
@@ -48,12 +51,15 @@ def confirm_action(action_name):
     Args:
         action_name: название действия для вопроса, например "удаление таблицы".
 
-    Если пользователь ответил не "y", функция не вызывается и обёртка
-    возвращает None.
+    Если пользователь ответил не CONFIRM_ANSWER ("y"), функция не вызывается
+    и обёртка возвращает None.
     """
 
     def decorator(func):
+        """Оборачивает func в запрос подтверждения."""
+
         def wrapper(*args, **kwargs):
+            """Спрашивает подтверждение и вызывает func только при согласии."""
             question = f'Вы уверены, что хотите выполнить "{action_name}"? [y/n]: '
             try:
                 answer = input(question)
@@ -61,7 +67,7 @@ def confirm_action(action_name):
                 print()
                 answer = ""
 
-            if answer.strip().lower() != "y":
+            if answer.strip().lower() != CONFIRM_ANSWER:
                 print("Операция отменена.")
                 return None
             return func(*args, **kwargs)
@@ -75,6 +81,7 @@ def log_time(func):
     """Замеряет время выполнения функции и выводит его в консоль."""
 
     def wrapper(*args, **kwargs):
+        """Вызывает func и печатает, сколько секунд она выполнялась."""
         start = time.monotonic()
         result = func(*args, **kwargs)
         elapsed = time.monotonic() - start
@@ -95,6 +102,7 @@ def create_cacher():
     cache = {}
 
     def cache_result(key, value_func):
+        """Возвращает результат из кэша или вычисляет его через value_func."""
         if key in cache:
             return cache[key]
 

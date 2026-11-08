@@ -1,4 +1,4 @@
-QUOTES = "\"'"
+from primitive_db.constants import QUOTES
 
 
 def parse_value(token):
@@ -14,6 +14,7 @@ def parse_value(token):
     if not token:
         raise ValueError("пустое значение")
 
+    # строка в кавычках: минимум 2 символа - открывающая и закрывающая кавычка
     if len(token) >= 2 and token[0] in QUOTES and token[-1] == token[0]:
         return token[1:-1]
 

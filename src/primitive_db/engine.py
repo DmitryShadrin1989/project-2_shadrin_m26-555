@@ -3,7 +3,13 @@ import shlex
 import prompt
 from prettytable import PrettyTable
 
-from primitive_db.constants import DB_META_FILE, ID_COLUMN
+from primitive_db.constants import (
+    COMMANDS,
+    DB_META_FILE,
+    ID_COLUMN,
+    MODIFYING_COMMANDS,
+    PROMPT,
+)
 from primitive_db.core import (
     create_table,
     delete,
@@ -24,20 +30,6 @@ from primitive_db.utils import (
     save_metadata,
     save_table_data,
 )
-
-COMMANDS = {
-    "create_table",
-    "drop_table",
-    "list_tables",
-    "insert",
-    "select",
-    "update",
-    "delete",
-    "info",
-    "help",
-    "exit",
-}
-MODIFYING_COMMANDS = {"create_table", "drop_table", "insert", "update", "delete"}
 
 
 def print_help():
@@ -177,7 +169,7 @@ def run():
         metadata = load_metadata(DB_META_FILE)
 
         try:
-            user_input = prompt.string(">>>Введите команду: ")
+            user_input = prompt.string(PROMPT)
         except (KeyboardInterrupt, EOFError):
             print()
             break
