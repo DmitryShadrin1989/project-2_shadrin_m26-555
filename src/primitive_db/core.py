@@ -1,6 +1,4 @@
-VALID_TYPES = {"int", "str", "bool"}
-ID_COLUMN = "ID"
-ID_TYPE = "int"
+from primitive_db.constants import ID_COLUMN, ID_TYPE, VALID_TYPES
 
 
 def create_table(metadata, table_name, columns):
