@@ -15,10 +15,9 @@ from primitive_db.core import (
     update,
     validate_clause,
 )
-from primitive_db.decorators import handle_db_errors
+from primitive_db.decorators import create_cacher, handle_db_errors
 from primitive_db.parser import parse_delete, parse_insert, parse_select, parse_update
 from primitive_db.utils import (
-    create_cacher,
     delete_table_data,
     load_metadata,
     load_table_data,

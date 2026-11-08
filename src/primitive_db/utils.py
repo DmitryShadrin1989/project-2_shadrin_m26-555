@@ -78,24 +78,3 @@ def delete_table_data(table_name):
         table_name: имя таблицы.
     """
     _table_path(table_name).unlink(missing_ok=True)
-
-
-def create_cacher():
-    """Создаёт функцию кэширования со своим словарём кэша в замыкании.
-
-    Returns:
-        Функция cache_result(key, value_func). Если результат для key уже
-        есть в кэше, она возвращает его. Иначе вызывает value_func(),
-        сохраняет результат в кэш и возвращает его.
-    """
-    cache = {}
-
-    def cache_result(key, value_func):
-        if key in cache:
-            return cache[key]
-
-        result = value_func()
-        cache[key] = result
-        return result
-
-    return cache_result
