@@ -1,5 +1,10 @@
 from primitive_db.constants import ID_COLUMN, ID_TYPE, VALID_TYPES
-from primitive_db.decorators import DatabaseError, handle_db_errors
+from primitive_db.decorators import (
+    DatabaseError,
+    confirm_action,
+    handle_db_errors,
+    log_time,
+)
 
 
 def _ensure_table_exists(metadata, table_name):
@@ -61,6 +66,7 @@ def create_table(metadata, table_name, columns):
 
 
 @handle_db_errors
+@confirm_action("удаление таблицы")
 def drop_table(metadata, table_name):
     """Удаляет таблицу из метаданных.
 
@@ -69,7 +75,8 @@ def drop_table(metadata, table_name):
         table_name: имя удаляемой таблицы.
 
     Returns:
-        Обновлённый словарь метаданных или None, если таблицы нет.
+        Обновлённый словарь метаданных или None, если таблицы нет
+        или пользователь отменил удаление.
     """
     _ensure_table_exists(metadata, table_name)
 
@@ -139,6 +146,7 @@ def validate_clause(metadata, table_name, clause, allow_id=True):
 
 
 @handle_db_errors
+@log_time
 def insert(metadata, table_name, values, table_data):
     """Добавляет новую запись в таблицу. ID генерируется автоматически.
 
@@ -177,6 +185,7 @@ def _matches(record, where_clause):
     return all(record.get(column) == value for column, value in where_clause.items())
 
 
+@log_time
 def select(table_data, where_clause=None):
     """Возвращает записи таблицы, подходящие под условие.
 
@@ -203,11 +212,13 @@ def update(table_data, set_clause, where_clause):
     Returns:
         Изменённый список записей.
     """
-    for record in select(table_data, where_clause):
-        record.update(set_clause)
+    for record in table_data:
+        if _matches(record, where_clause):
+            record.update(set_clause)
     return table_data
 
 
+@confirm_action("удаление записей")
 def delete(table_data, where_clause):
     """Удаляет записи, подходящие под условие.
 
@@ -216,7 +227,8 @@ def delete(table_data, where_clause):
         where_clause: условие вида {"ID": 1}.
 
     Returns:
-        Новый список записей без удалённых.
+        Новый список записей без удалённых или None, если пользователь
+        отменил удаление.
     """
     return [record for record in table_data if not _matches(record, where_clause)]
 

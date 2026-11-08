@@ -147,6 +147,9 @@ def _handle_delete(metadata, user_input):
         return
 
     table_data = delete(table_data, where_clause)
+    if table_data is None:
+        return  # пользователь отменил удаление
+
     save_table_data(table_name, table_data)
     for record_id in ids:
         print(f'Запись с ID={record_id} успешно удалена из таблицы "{table_name}".')
@@ -182,7 +185,11 @@ def run():
                 if create_table(metadata, table_name, columns) is not None:
                     save_metadata(DB_META_FILE, metadata)
             case ["drop_table", table_name]:
-                if drop_table(metadata, table_name) is not None:
+                # сначала проверяем, что таблица есть, чтобы не спрашивать зря
+                if (
+                    validate_clause(metadata, table_name, None)
+                    and drop_table(metadata, table_name) is not None
+                ):
                     save_metadata(DB_META_FILE, metadata)
                     delete_table_data(table_name)
             case ["list_tables"]:
