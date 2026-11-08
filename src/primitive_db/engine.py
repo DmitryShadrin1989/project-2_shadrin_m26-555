@@ -15,8 +15,10 @@ from primitive_db.core import (
     update,
     validate_clause,
 )
+from primitive_db.decorators import handle_db_errors
 from primitive_db.parser import parse_delete, parse_insert, parse_select, parse_update
 from primitive_db.utils import (
+    create_cacher,
     delete_table_data,
     load_metadata,
     load_table_data,
@@ -36,6 +38,7 @@ COMMANDS = {
     "help",
     "exit",
 }
+MODIFYING_COMMANDS = {"create_table", "drop_table", "insert", "update", "delete"}
 
 
 def print_help():
@@ -90,6 +93,7 @@ def _matching_ids(table_data, where_clause):
     return [record[ID_COLUMN] for record in select(table_data, where_clause)]
 
 
+@handle_db_errors
 def _handle_insert(metadata, user_input):
     """Выполняет команду insert into ... values (...)."""
     table_name, values = parse_insert(user_input)
@@ -98,16 +102,25 @@ def _handle_insert(metadata, user_input):
         save_table_data(table_name, table_data)
 
 
-def _handle_select(metadata, user_input):
-    """Выполняет команду select from ... [where ...]."""
+@handle_db_errors
+def _handle_select(metadata, user_input, cache_result):
+    """Выполняет команду select from ... [where ...].
+
+    Результаты одинаковых запросов берутся из кэша: файл не читается
+    и функция select не вызывается повторно.
+    """
     table_name, where_clause = parse_select(user_input)
     if not validate_clause(metadata, table_name, where_clause):
         return
 
-    records = select(load_table_data(table_name), where_clause)
+    key = (table_name, str(where_clause))
+    records = cache_result(
+        key, lambda: select(load_table_data(table_name), where_clause)
+    )
     _print_records(metadata[table_name], records)
 
 
+@handle_db_errors
 def _handle_update(metadata, user_input):
     """Выполняет команду update ... set ... where ..."""
     table_name, set_clause, where_clause = parse_update(user_input)
@@ -129,6 +142,7 @@ def _handle_update(metadata, user_input):
         print(f'Запись с ID={record_id} в таблице "{table_name}" успешно обновлена.')
 
 
+@handle_db_errors
 def _handle_delete(metadata, user_input):
     """Выполняет команду delete from ... where ..."""
     table_name, where_clause = parse_delete(user_input)
@@ -142,6 +156,9 @@ def _handle_delete(metadata, user_input):
         return
 
     table_data = delete(table_data, where_clause)
+    if table_data is None:
+        return  # пользователь отменил удаление
+
     save_table_data(table_name, table_data)
     for record_id in ids:
         print(f'Запись с ID={record_id} успешно удалена из таблицы "{table_name}".')
@@ -151,9 +168,11 @@ def run():
     """Запускает основной цикл программы: читает команды и выполняет их.
 
     На каждой итерации метаданные заново читаются из файла. Изменения
-    таблиц и данных сразу сохраняются в файлы.
+    таблиц и данных сразу сохраняются в файлы. Результаты select
+    кэшируются до первой команды, которая меняет таблицы или данные.
     """
     print_help()
+    cache_result = create_cacher()
 
     while True:
         metadata = load_metadata(DB_META_FILE)
@@ -170,36 +189,41 @@ def run():
             print(f"Некорректное значение: {user_input}. Попробуйте снова.")
             continue
 
-        try:
-            match args:
-                case []:
-                    continue
-                case ["create_table", table_name, *columns]:
-                    metadata = create_table(metadata, table_name, columns)
+        match args:
+            case []:
+                continue
+            case ["create_table", table_name, *columns]:
+                if create_table(metadata, table_name, columns) is not None:
                     save_metadata(DB_META_FILE, metadata)
-                case ["drop_table", table_name]:
-                    metadata = drop_table(metadata, table_name)
+            case ["drop_table", table_name]:
+                # сначала проверяем, что таблица есть, чтобы не спрашивать зря
+                if (
+                    validate_clause(metadata, table_name, None)
+                    and drop_table(metadata, table_name) is not None
+                ):
                     save_metadata(DB_META_FILE, metadata)
                     delete_table_data(table_name)
-                case ["list_tables"]:
-                    list_tables(metadata)
-                case ["insert", *_]:
-                    _handle_insert(metadata, user_input)
-                case ["select", *_]:
-                    _handle_select(metadata, user_input)
-                case ["update", *_]:
-                    _handle_update(metadata, user_input)
-                case ["delete", *_]:
-                    _handle_delete(metadata, user_input)
-                case ["info", table_name]:
-                    info(metadata, table_name, load_table_data(table_name))
-                case ["help"]:
-                    print_help()
-                case ["exit"]:
-                    break
-                case [command, *_] if command in COMMANDS:
-                    print(f"Некорректное значение: {user_input}. Попробуйте снова.")
-                case [command, *_]:
-                    print(f"Функции {command} нет. Попробуйте снова.")
-        except ValueError as error:
-            print(f"Некорректное значение: {error}. Попробуйте снова.")
+            case ["list_tables"]:
+                list_tables(metadata)
+            case ["insert", *_]:
+                _handle_insert(metadata, user_input)
+            case ["select", *_]:
+                _handle_select(metadata, user_input, cache_result)
+            case ["update", *_]:
+                _handle_update(metadata, user_input)
+            case ["delete", *_]:
+                _handle_delete(metadata, user_input)
+            case ["info", table_name]:
+                info(metadata, table_name, load_table_data(table_name))
+            case ["help"]:
+                print_help()
+            case ["exit"]:
+                break
+            case [command, *_] if command in COMMANDS:
+                print(f"Некорректное значение: {user_input}. Попробуйте снова.")
+            case [command, *_]:
+                print(f"Функции {command} нет. Попробуйте снова.")
+
+        if args[0] in MODIFYING_COMMANDS:
+            # данные могли измениться: старый кэш больше не годится
+            cache_result = create_cacher()
