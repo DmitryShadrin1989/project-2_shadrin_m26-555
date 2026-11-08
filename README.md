@@ -223,3 +223,8 @@ uv run database
 ### CRUD-операции
 
 [![asciicast](https://asciinema.org/a/GmsLr92zv5ZMHKYQ.svg)](https://asciinema.org/a/GmsLr92zv5ZMHKYQ)
+
+### Декораторы и кэширование
+
+[![asciicast](https://asciinema.org/a/Mu95CAoEzLdBLYdD.svg)](https://asciinema.org/a/Mu95CAoEzLdBLYdD)
+
